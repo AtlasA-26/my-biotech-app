@@ -19,8 +19,10 @@ data = {
 }
 df = pd.DataFrame(data)
 
-try:
-    df = pd.read_csv('data/research_data.csv')
-    st.table(df)
-except FileNotFoundError:
-    st.warning("Data is currently being gathered. Check back in 5 minutes!")
+search = st.text_input("Search breakthroughs (e.g., 'mRNA'):")
+if search:
+    df = df[df['Breakthrough'].str.contains(search, case=False)]
+
+st.table(df)
+
+st.info("💡 This is a live preview of my 'Technical Translator' automation engine.")
