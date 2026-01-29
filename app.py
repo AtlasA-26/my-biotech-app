@@ -5,7 +5,7 @@ import pandas as pd
 st.set_page_config(page_title="Biotech Intelligence Portal", page_icon="🔬")
 
 st.title("🔬 LMIC Biotech Research Feed")
-st.subheader("Automated Intelligence for [Prospect Name]")
+st.subheader("Automated Intelligence for Karl Kaddu")
 
 # Mock data to simulate your Python Scraper output
 data = {
@@ -26,3 +26,4 @@ if search:
 st.table(df)
 
 st.info("💡 This is a live preview of my 'Technical Translator' automation engine.")
+
