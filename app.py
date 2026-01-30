@@ -8,7 +8,7 @@ st.set_page_config(layout="wide", page_title="Atlas Agentic Intelligence")
 # --- DATA LOADING ---
 DATA_PATH = "data/research_data.csv"
 
-@st.cache_data(ttl=3600) # Cache for 1 hour to keep it fast
+@st.cache_data(ttl=3600)
 def load_atlas_data():
     if os.path.exists(DATA_PATH):
         df = pd.read_csv(DATA_PATH)
@@ -24,54 +24,64 @@ df = load_atlas_data()
 st.sidebar.header("Atlas Intel Filters")
 
 if not df.empty:
-    # Date Range Filter
+    # 1. KEYWORD SEARCH (The New Feature)
+    search_query = st.sidebar.text_input("🔍 Search Intelligence", placeholder="e.g. Vaccine, Policy, Nigeria...")
+
+    # 2. DATE RANGE
     min_date = df['Date'].min().date()
     max_date = df['Date'].max().date()
-    
-    date_range = st.sidebar.date_input(
-        "Select Timeframe",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date
-    )
+    date_range = st.sidebar.date_input("Select Timeframe", value=(min_date, max_date))
 
-    # Region Filter
+    # 3. REGION SELECT
     regions = st.sidebar.multiselect("Select Regions", options=df['Region'].unique(), default=df['Region'].unique())
     
-    # Visualization Type
-    chart_type = st.sidebar.selectbox("View Mode", ["News Feed", "Regional Analysis", "Source Breakdown"])
+    chart_type = st.sidebar.selectbox("View Mode", ["News Feed", "Analytics Dashboard"])
 
-    # --- MAIN CONTENT ---
-    st.title("🔬 Atlas Agentic: Real-Time Biotech Intel")
+    # --- DATA FILTERING LOGIC ---
+    mask = (df['Region'].isin(regions))
     
-    # Filter the Dataframe based on sidebar
     if len(date_range) == 2:
         start, end = date_range
-        mask = (df['Date'].dt.date >= start) & (df['Date'].dt.date <= end) & (df['Region'].isin(regions))
-        filtered_df = df.loc[mask]
-    else:
-        filtered_df = df
+        mask = mask & (df['Date'].dt.date >= start) & (df['Date'].dt.date <= end)
+    
+    # Apply Keyword Search
+    if search_query:
+        mask = mask & (df['Headline'].str.contains(search_query, case=False, na=False))
 
-    # Display Content
+    filtered_df = df.loc[mask]
+
+    # --- MAIN CONTENT ---
+    st.title("🔬 Atlas Agentic Intelligence")
+    
+    # Action Bar: Results count and Download button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.write(f"Showing **{len(filtered_df)}** signals found.")
+    with col2:
+        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Export Results", data=csv, file_name="atlas_export.csv", mime="text/csv")
+
     if chart_type == "News Feed":
-        st.subheader("Latest Global & LMIC Signals")
-        # Display as a clean list of clickable headlines
-        for i, row in filtered_df.iterrows():
-            st.markdown(f"**[{row['Source']}]** {row['Headline']}  \n[Read Source Article]({row['Link']})")
-            st.divider()
+        if not filtered_df.empty:
+            for _, row in filtered_df.sort_values(by="Date", ascending=False).iterrows():
+                with st.container():
+                    st.markdown(f"**{row['Date'].strftime('%Y-%m-%d')}** | **{row['Source']}**")
+                    st.markdown(f"#### {row['Headline']}")
+                    st.markdown(f"[🔗 View Original Source]({row['Link']})")
+                    st.divider()
+        else:
+            st.warning("No signals match your search criteria.")
 
-    elif chart_type == "Regional Analysis":
-        st.subheader("Intel Volume by Region")
-        fig = px.pie(filtered_df, names="Region", color_discrete_sequence=['#1DE9B6', '#263238'])
-        st.plotly_chart(fig, use_container_width=True)
+    elif chart_type == "Analytics Dashboard":
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Regional Distribution")
+            st.plotly_chart(px.pie(filtered_df, names="Region", hole=0.4), use_container_width=True)
+        with c2:
+            st.subheader("Source Volume")
+            st.plotly_chart(px.bar(filtered_df, x="Source", color="Source"), use_container_width=True)
 
-    elif chart_type == "Source Breakdown":
-        st.subheader("Intelligence Volume by Source")
-        fig = px.bar(filtered_df, x="Source", color="Region", barmode="group")
-        st.plotly_chart(fig, use_container_width=True)
+    st.sidebar.caption(f"Last Sync: {df['Date'].max().strftime('%Y-%m-%d')}")
 
-    # Footer/Meta Info
-    st.sidebar.markdown("---")
-    st.sidebar.caption(f"Last Intelligence Sync: {df['Date'].max().strftime('%Y-%m-%d')}")
 
 
